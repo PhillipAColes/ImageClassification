@@ -1,27 +1,24 @@
 clear all;  clc
 cd C:\Users\Phillip\Workspace\ML\ImageClassification
 
-fprintf('Loading data ...\n');
-load('MNIST_handwritten_digits.mat');
-fprintf('... done\n');
+% fprintf('Loading data ...\n');
+% load('MNIST_handwritten_digits.mat');
+% fprintf('... done\n');
 
-yval = y;
+imgFile = '.\MNIST\handwritten_digits\train-images-idx3-ubyte';
+labelFile = '.\MNIST\handwritten_digits\train-labels-idx1-ubyte';
+[imgs labels] = readMNIST(imgFile, labelFile, 60000, 0);
+X = reshape(imgs,[400,60000])';
+y = labels;
 
-% number of classes
-num_classes = 10;
-
-% change format of y to binary array
-y = zeros(size(X,1),num_classes); 
-index = (yval-1).*size(X,1)+(1:size(X,1))';
-y(index) = 1
+%%
 
 %resize - reshape image
-idex = 3000%ceil(rand(1)*size(X,1));
-yval(idex)
+idex = ceil(rand(1)*size(X,1));
+y(idex)
 digit_image = reshape(X(idex,:),[20,20]);
 imagesc(digit_image);
 colormap(flipud(gray));
-
 
 %%
 % clear all; clc; clf
@@ -29,6 +26,9 @@ colormap(flipud(gray));
 %%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%%
 %%%% user should modify the below %%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%%%%
 %%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%%
+
+% number of classes
+num_classes = 10;
 
 % number of hidden layers
 num_hidden_layers = 1;
@@ -42,7 +42,7 @@ activation_function_type = {'sigmoid', 'sigmoid'};
 feature_scaling_tf = false;
 
 % regularisation parameter
-lambda = 0.003
+lambda = 0.3
 
 %%%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%%%%
 
@@ -84,14 +84,25 @@ if exist('weights_array')==0
 end
 
 if feature_scaling_tf == true
-    
     X_scaled = ScaleFeatures(X);
-    X = X_scaled;
-    
+    X = X_scaled;    
 end
 
 % Add bias term
 X = [ones(num_data_samples,1) X];
+
+%%
+
+% if taken from MNIST then we replace 0's with 10's to make indexing work
+y(y==0)=10;
+
+% Copy vector of labels from y to yval
+yval = y;
+
+% change format of y to ( num_data_samples x num_classes ) binary array
+y = zeros(size(y,1),num_classes); 
+index = (yval-1).*size(y,1)+(1:size(y,1))';
+y(index) = 1;
 
 %%
 %%~~~~~~~~~~~~~~~~~~~~~~%%
@@ -138,27 +149,43 @@ backPropagation = @(p) NNBackPropagation(p, X, y, num_layers, ...
                 
 
 
-options = optimset('MaxIter', 200);
+options = optimset('MaxIter', 50);
 [nn_params, cost] = fmincg(backPropagation, nn_weights, options);
 
 %options = optimoptions('fminunc','GradObj','on','Display','iter','MaxIter',200)
 %[nn_params, cost] = fminunc(backPropagation, nn_weights, options);
 
+% reshape nn weights
+weights_array = Vec2CellArray(nn_params,num_layers,num_units);
+
 %% 
 
-sample = 1234;
+% load and format MNIST test data
+imgFile = '.\MNIST\handwritten_digits\t10k-images-idx3-ubyte';
+labelFile = '.\MNIST\handwritten_digits\t10k-labels-idx1-ubyte';
+[testImgs testLabels] = readMNIST(imgFile, labelFile, 10000, 0);
+Xtest = reshape(testImgs,[400,10000])';
+ytest = testLabels;
+Xtest = [ones(size(Xtest,1),1) Xtest];
 
-digit_image = reshape(X(sample,2:end),[20,20]);
+%%
+
+% Plot random example from test data
+sample = ceil(rand(1)*size(Xtest,1));
+digit_image = reshape(Xtest(sample,2:end),[20,20]);
 imagesc(digit_image);
 colormap(flipud(gray));
 
-% One final pass of forward propagation to get our final hypothesis
-weights_array = Vec2CellArray(nn_params,num_layers,num_units);
-
+% Use our hypothesis to predict which digit is shown in our test data image
 activation = ForwardPropagation(weights_array, num_layers,...
                                    1, num_units, ...
-                                   activation_function_type, X(sample,:));
+                                   activation_function_type, Xtest(sample,:));
 
+% Get digit value (a prediction of 10 = test digit 0)
 [predval predidex] = max(activation{num_layers});
 
-predidex
+% Predicted values of 10 correspond to labels of 0
+predidex(predidex==10)=0;
+
+fprintf('Test sample %i has predicted digit: %i,   actual digit: %i\n',...
+    sample,predidex,ytest(sample))

@@ -10,9 +10,11 @@ activation = ForwardPropagation(weights_array, num_layers,...
                                    num_data_samples, num_units, ...
                                    activation_function_type, X);
                                
-output_error = activation{num_layers}' - y';
+h = activation{num_layers};
 
-cost = ComputeCost(output_error, weights_array, ...
+output_error = (h' - y');
+
+cost = ComputeCost(h, y, weights_array, ...
                                 num_data_samples, num_layers, lambda);
 
 grad = cellfun(@(x) x*0,weights_array,'un',0);
@@ -24,9 +26,9 @@ for t = 1:num_data_samples
     % Find the error on the output layer and last hidden layer, as well as
     % the gradient of the cost function w.r.t the weights of the last two
     % layers
-    activation_error{num_layers-1} = output_error(t);    
+    activation_error{num_layers-1} = output_error(:,t);    
     grad{num_layers-1} = grad{num_layers-1} + ...
-                         activation_error{num_layers-1}(:)'*activation{num_layers-1}(t,:)';    
+                         (activation_error{num_layers-1}(:)*activation{num_layers-1}(t,:))';    
     activation_error{num_layers-2} = weights_array{num_layers-1}*activation_error{num_layers-1}...
                          .*activation{num_layers-1}(t,:)'.*(1 - activation{num_layers-1}(t,:))';                                
     grad{num_layers-2} = grad{num_layers-2} + ...

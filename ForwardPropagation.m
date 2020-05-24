@@ -4,7 +4,7 @@ function [activation] = ForwardPropagation(weights_array, num_layers,...
 %FORWARDPROPAGATION explain...
 
 activation(1) = {X};
-                               
+
 for layer = 1:num_layers-1
 
     if strcmp(activation_function_type{layer},'sigmoid')
